@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 export interface CourseData {
   _id: string;
@@ -50,16 +50,7 @@ export async function getCourses(): Promise<CourseData[]> {
     return json.success ? json.data.courses : [];
   } catch (error) {
     console.error('[API Error] Fetch courses failed:', error);
-    // Fallback try on port 5001 if default fails
-    try {
-      const resFallback = await fetch('http://localhost:5001/api/courses', {
-        next: { revalidate: 60 },
-      });
-      const json = await resFallback.json();
-      return json.success ? json.data.courses : [];
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 
@@ -76,15 +67,7 @@ export async function getTestimonials(): Promise<TestimonialData[]> {
     return json.success ? json.data.testimonials : [];
   } catch (error) {
     console.error('[API Error] Fetch testimonials failed:', error);
-    try {
-      const resFallback = await fetch('http://localhost:5001/api/testimonials', {
-        next: { revalidate: 60 },
-      });
-      const json = await resFallback.json();
-      return json.success ? json.data.testimonials : [];
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 
@@ -95,21 +78,11 @@ export async function submitEnquiry(
   payload: EnquiryPayload
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
-    let url = `${API_BASE_URL}/enquiries`;
-    let res = await fetch(url, {
+    const res = await fetch(`${API_BASE_URL}/enquiries`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-
-    if (!res.ok && res.status !== 400 && res.status !== 429) {
-      // Fallback try 5001
-      res = await fetch('http://localhost:5001/api/enquiries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-    }
 
     const json = await res.json();
     if (json.success) {
@@ -140,42 +113,32 @@ export async function loginUser(
   username: string,
   password: string
 ): Promise<{ success: boolean; data?: UserSession; error?: { code: string; message: string } }> {
-  const tryUrls = [
-    `${API_BASE_URL}/auth/login`,
-    'http://localhost:5001/api/auth/login',
-    'http://localhost:5000/api/auth/login',
-  ];
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password }),
+    });
 
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, password }),
-      });
-
-      const json = await res.json();
-      if (json.success) {
-        return { success: true, data: json.data.user };
-      } else if (res.status === 400 || res.status === 401 || res.status === 429) {
-        return {
-          success: false,
-          error: {
-            code: json.error?.code || 'LOGIN_FAILED',
-            message: json.error?.message || 'Invalid username or password',
-          },
-        };
-      }
-    } catch (err) {
-      // Continue to next fallback URL
+    const json = await res.json();
+    if (json.success) {
+      return { success: true, data: json.data.user };
+    } else {
+      return {
+        success: false,
+        error: {
+          code: json.error?.code || 'LOGIN_FAILED',
+          message: json.error?.message || 'Invalid username or password',
+        },
+      };
     }
+  } catch (err) {
+    return {
+      success: false,
+      error: { code: 'NETWORK_ERROR', message: 'Unable to connect to authentication server' },
+    };
   }
-
-  return {
-    success: false,
-    error: { code: 'NETWORK_ERROR', message: 'Unable to connect to authentication server' },
-  };
 }
 
 /**
@@ -183,25 +146,16 @@ export async function loginUser(
  * Clears HttpOnly session cookie.
  */
 export async function logoutUser(): Promise<{ success: boolean }> {
-  const tryUrls = [
-    `${API_BASE_URL}/auth/logout`,
-    'http://localhost:5001/api/auth/logout',
-    'http://localhost:5000/api/auth/logout',
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const json = await res.json();
-      if (json.success) return { success: true };
-    } catch (err) {
-      // Continue
-    }
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    const json = await res.json();
+    if (json.success) return { success: true };
+  } catch (err) {
+    // Network error
   }
-
   return { success: false };
 }
 
@@ -209,30 +163,22 @@ export async function logoutUser(): Promise<{ success: boolean }> {
  * Fetch current authenticated user via GET /api/auth/me
  */
 export async function getMe(): Promise<{ success: boolean; user?: UserSession }> {
-  const tryUrls = [
-    `${API_BASE_URL}/auth/me`,
-    'http://localhost:5001/api/auth/me',
-    'http://localhost:5000/api/auth/me',
-  ];
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'GET',
+      credentials: 'include',
+    });
 
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (res.status === 401) {
-        return { success: false };
-      }
-
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, user: json.data };
-      }
-    } catch (err) {
-      // Continue
+    if (res.status === 401) {
+      return { success: false };
     }
+
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, user: json.data };
+    }
+  } catch (err) {
+    // Network error
   }
 
   return { success: false };
@@ -342,22 +288,14 @@ export interface TestRankingsPayload {
  * Fetch student assigned tests (scoped to student's batch)
  */
 export async function getStudentTests(): Promise<TestListItem[]> {
-  const tryUrls = [
-    `${API_BASE_URL}/tests`,
-    'http://localhost:5001/api/tests',
-    'http://localhost:5000/api/tests',
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return json.data.tests || [];
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/tests`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.tests || [];
     }
+  } catch (e) {
+    console.error('[API Error] Fetch student tests failed:', e);
   }
   return [];
 }
@@ -368,30 +306,22 @@ export async function getStudentTests(): Promise<TestListItem[]> {
 export async function getTestAttempt(
   testId: string
 ): Promise<{ success: boolean; data?: TestAttemptPayload; error?: { code: string; message: string } }> {
-  const tryUrls = [
-    `${API_BASE_URL}/tests/${testId}/attempt`,
-    `http://localhost:5001/api/tests/${testId}/attempt`,
-    `http://localhost:5000/api/tests/${testId}/attempt`,
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, data: json.data };
-      } else if (res.status === 400 || res.status === 403 || res.status === 404) {
-        return {
-          success: false,
-          error: {
-            code: json.error?.code || 'ATTEMPT_ERROR',
-            message: json.error?.message || 'Unable to start test attempt.',
-          },
-        };
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/tests/${testId}/attempt`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, data: json.data };
+    } else if (res.status === 400 || res.status === 403 || res.status === 404) {
+      return {
+        success: false,
+        error: {
+          code: json.error?.code || 'ATTEMPT_ERROR',
+          message: json.error?.message || 'Unable to start test attempt.',
+        },
+      };
     }
+  } catch (e) {
+    console.error('[API Error] Fetch test attempt failed:', e);
   }
 
   return { success: false, error: { code: 'NETWORK_ERROR', message: 'Unable to connect to server.' } };
@@ -405,35 +335,27 @@ export async function submitTestAttempt(
   answers: { questionId: string; selectedOptionIndex: number | null }[],
   autoSubmitted = false
 ): Promise<{ success: boolean; data?: any; error?: { code: string; message: string } }> {
-  const tryUrls = [
-    `${API_BASE_URL}/tests/${testId}/submit`,
-    `http://localhost:5001/api/tests/${testId}/submit`,
-    `http://localhost:5000/api/tests/${testId}/submit`,
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ answers, autoSubmitted }),
-      });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, data: json.data };
-      } else if (res.status === 400 || res.status === 403) {
-        return {
-          success: false,
-          error: {
-            code: json.error?.code || 'SUBMIT_ERROR',
-            message: json.error?.message || 'Submission failed.',
-          },
-        };
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/tests/${testId}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ answers, autoSubmitted }),
+    });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, data: json.data };
+    } else if (res.status === 400 || res.status === 403) {
+      return {
+        success: false,
+        error: {
+          code: json.error?.code || 'SUBMIT_ERROR',
+          message: json.error?.message || 'Submission failed.',
+        },
+      };
     }
+  } catch (e) {
+    console.error('[API Error] Submit test attempt failed:', e);
   }
 
   return { success: false, error: { code: 'NETWORK_ERROR', message: 'Unable to connect to server.' } };
@@ -445,22 +367,14 @@ export async function submitTestAttempt(
 export async function getTestResult(
   testId: string
 ): Promise<{ success: boolean; data?: TestResultPayload; error?: { code: string; message: string } }> {
-  const tryUrls = [
-    `${API_BASE_URL}/tests/${testId}/result`,
-    `http://localhost:5001/api/tests/${testId}/result`,
-    `http://localhost:5000/api/tests/${testId}/result`,
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, data: json.data };
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/tests/${testId}/result`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, data: json.data };
     }
+  } catch (e) {
+    console.error('[API Error] Fetch test result failed:', e);
   }
 
   return { success: false, error: { code: 'NOT_FOUND', message: 'Result not found.' } };
@@ -472,22 +386,14 @@ export async function getTestResult(
 export async function getTestRankings(
   testId: string
 ): Promise<{ success: boolean; data?: TestRankingsPayload; error?: { code: string; message: string } }> {
-  const tryUrls = [
-    `${API_BASE_URL}/tests/${testId}/rankings`,
-    `http://localhost:5001/api/tests/${testId}/rankings`,
-    `http://localhost:5000/api/tests/${testId}/rankings`,
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, data: json.data };
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/tests/${testId}/rankings`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, data: json.data };
     }
+  } catch (e) {
+    console.error('[API Error] Fetch test rankings failed:', e);
   }
 
   return { success: false, error: { code: 'NOT_FOUND', message: 'Rankings not found.' } };
@@ -497,22 +403,14 @@ export async function getTestRankings(
  * Fetch student study materials (scoped to student class/stream)
  */
 export async function getStudentMaterials(): Promise<MaterialItem[]> {
-  const tryUrls = [
-    `${API_BASE_URL}/materials`,
-    'http://localhost:5001/api/materials',
-    'http://localhost:5000/api/materials',
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return json.data.materials || [];
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/materials`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.materials || [];
     }
+  } catch (e) {
+    console.error('[API Error] Fetch student materials failed:', e);
   }
   return [];
 }
@@ -521,22 +419,14 @@ export async function getStudentMaterials(): Promise<MaterialItem[]> {
  * Fetch student PYQs (scoped to student class)
  */
 export async function getStudentPYQs(): Promise<PYQItem[]> {
-  const tryUrls = [
-    `${API_BASE_URL}/pyqs`,
-    'http://localhost:5001/api/pyqs',
-    'http://localhost:5000/api/pyqs',
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return json.data.pyqs || [];
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/pyqs`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.pyqs || [];
     }
+  } catch (e) {
+    console.error('[API Error] Fetch student PYQs failed:', e);
   }
   return [];
 }
@@ -545,22 +435,14 @@ export async function getStudentPYQs(): Promise<PYQItem[]> {
  * Fetch student notices (scoped to global OR student's batchId)
  */
 export async function getStudentNotices(): Promise<NoticeItem[]> {
-  const tryUrls = [
-    `${API_BASE_URL}/notices`,
-    'http://localhost:5001/api/notices',
-    'http://localhost:5000/api/notices',
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return json.data.notices || [];
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/notices`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.notices || [];
     }
+  } catch (e) {
+    console.error('[API Error] Fetch student notices failed:', e);
   }
   return [];
 }
@@ -591,51 +473,43 @@ export async function sendChatMessage(
   prompt: string,
   history: ChatMessagePayload[] = []
 ): Promise<ChatResponse> {
-  const tryUrls = [
-    `${API_BASE_URL}/chatbot/message`,
-    'http://localhost:5001/api/chatbot/message',
-    'http://localhost:5000/api/chatbot/message',
-  ];
+  try {
+    const res = await fetch(`${API_BASE_URL}/chatbot/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ prompt, history }),
+    });
 
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ prompt, history }),
-      });
+    const json = await res.json();
 
-      const json = await res.json();
-
-      if (res.status === 429) {
-        return {
-          success: false,
-          error: {
-            code: 'RATE_LIMITED',
-            message: json.error?.message || 'Daily AI Tutor message limit reached (40/40).',
-            resetAt: json.error?.resetAt,
-          },
-        };
-      }
-
-      if (json.success && json.data) {
-        return {
-          success: true,
-          reply: json.data.reply,
-        };
-      } else if (json.error) {
-        return {
-          success: false,
-          error: {
-            code: json.error.code || 'CHATBOT_ERROR',
-            message: json.error.message || 'AI Tutor is temporarily unavailable.',
-          },
-        };
-      }
-    } catch (e) {
-      // Try next
+    if (res.status === 429) {
+      return {
+        success: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: json.error?.message || 'Daily AI Tutor message limit reached (40/40).',
+          resetAt: json.error?.resetAt,
+        },
+      };
     }
+
+    if (json.success && json.data) {
+      return {
+        success: true,
+        reply: json.data.reply,
+      };
+    } else if (json.error) {
+      return {
+        success: false,
+        error: {
+          code: json.error.code || 'CHATBOT_ERROR',
+          message: json.error.message || 'AI Tutor is temporarily unavailable.',
+        },
+      };
+    }
+  } catch (e) {
+    console.error('[API Error] Send chat message failed:', e);
   }
 
   return {
@@ -678,19 +552,14 @@ export interface AdminStudentItem {
  * Fetch all batches for admin (with optional includeArchived=true)
  */
 export async function getAdminBatches(includeArchived = true): Promise<AdminBatchItem[]> {
-  const url = `${API_BASE_URL}/admin/batches?includeArchived=${includeArchived}`;
-  const tryUrls = [url, `http://localhost:5001/api/admin/batches?includeArchived=${includeArchived}`];
-
-  for (const targetUrl of tryUrls) {
-    try {
-      const res = await fetch(targetUrl, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.batches) {
-        return json.data.batches;
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/batches?includeArchived=${includeArchived}`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.batches) {
+      return json.data.batches;
     }
+  } catch (e) {
+    console.error('[API Error] Fetch admin batches failed:', e);
   }
   return [];
 }
@@ -704,26 +573,22 @@ export async function createAdminBatch(payload: {
   stream: 'JEE' | 'NEET' | 'Foundation';
   timingLabel?: string;
 }): Promise<{ success: boolean; data?: AdminBatchItem; error?: string }> {
-  const tryUrls = [`${API_BASE_URL}/admin/batches`, 'http://localhost:5001/api/admin/batches'];
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/batches`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
 
-  for (const targetUrl of tryUrls) {
-    try {
-      const res = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, data: json.data };
-      } else if (json.error) {
-        return { success: false, error: json.error.message || 'Failed to create batch' };
-      }
-    } catch (e) {
-      // Try next
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, data: json.data };
+    } else if (json.error) {
+      return { success: false, error: json.error.message || 'Failed to create batch' };
     }
+  } catch (e) {
+    console.error('[API Error] Create admin batch failed:', e);
   }
 
   return { success: false, error: 'Unable to connect to server.' };
@@ -735,16 +600,13 @@ export async function createAdminBatch(payload: {
 export async function toggleBatchStatus(batchId: string, currentlyActive: boolean): Promise<boolean> {
   const endpoint = currentlyActive ? `/admin/batches/${batchId}` : `/admin/batches/${batchId}/reactivate`;
   const method = currentlyActive ? 'DELETE' : 'PATCH';
-  const tryUrls = [`${API_BASE_URL}${endpoint}`, `http://localhost:5001/api${endpoint}`];
 
-  for (const targetUrl of tryUrls) {
-    try {
-      const res = await fetch(targetUrl, { method, credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {
-      // Try next
-    }
+  try {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { method, credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Toggle batch status failed:', e);
   }
   return false;
 }
@@ -769,24 +631,18 @@ export async function getAdminStudents(params?: {
   if (params?.page) searchParams.set('page', params.page);
 
   const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : '';
-  const tryUrls = [
-    `${API_BASE_URL}/admin/students${queryStr}`,
-    `http://localhost:5001/api/admin/students${queryStr}`,
-  ];
 
-  for (const targetUrl of tryUrls) {
-    try {
-      const res = await fetch(targetUrl, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        return {
-          students: json.data.students || [],
-          total: json.data.total || json.data.students?.length || 0,
-        };
-      }
-    } catch (e) {
-      // Try next
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/students${queryStr}`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data) {
+      return {
+        students: json.data.students || [],
+        total: json.data.total || json.data.students?.length || 0,
+      };
     }
+  } catch (e) {
+    console.error('[API Error] Fetch admin students failed:', e);
   }
 
   return { students: [], total: 0 };
@@ -812,26 +668,22 @@ export async function createAdminStudent(payload: {
   };
   error?: string;
 }> {
-  const tryUrls = [`${API_BASE_URL}/admin/students`, 'http://localhost:5001/api/admin/students'];
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
 
-  for (const targetUrl of tryUrls) {
-    try {
-      const res = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, data: json.data };
-      } else if (json.error) {
-        return { success: false, error: json.error.message || 'Failed to create student' };
-      }
-    } catch (e) {
-      // Try next
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, data: json.data };
+    } else if (json.error) {
+      return { success: false, error: json.error.message || 'Failed to create student' };
     }
+  } catch (e) {
+    console.error('[API Error] Create admin student failed:', e);
   }
 
   return { success: false, error: 'Unable to connect to server.' };
@@ -843,16 +695,13 @@ export async function createAdminStudent(payload: {
 export async function toggleStudentStatus(studentId: string, currentlyActive: boolean): Promise<boolean> {
   const endpoint = currentlyActive ? `/admin/students/${studentId}` : `/admin/students/${studentId}/reactivate`;
   const method = currentlyActive ? 'DELETE' : 'PATCH';
-  const tryUrls = [`${API_BASE_URL}${endpoint}`, `http://localhost:5001/api${endpoint}`];
 
-  for (const targetUrl of tryUrls) {
-    try {
-      const res = await fetch(targetUrl, { method, credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {
-      // Try next
-    }
+  try {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { method, credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Toggle student status failed:', e);
   }
   return false;
 }
@@ -864,29 +713,22 @@ export async function resetStudentPassword(
   studentId: string,
   newPassword?: string
 ): Promise<{ success: boolean; data?: { username: string; newPassword: string }; error?: string }> {
-  const tryUrls = [
-    `${API_BASE_URL}/admin/students/${studentId}/reset-password`,
-    `http://localhost:5001/api/admin/students/${studentId}/reset-password`,
-  ];
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/students/${studentId}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ newPassword }),
+    });
 
-  for (const targetUrl of tryUrls) {
-    try {
-      const res = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ newPassword }),
-      });
-
-      const json = await res.json();
-      if (json.success && json.data) {
-        return { success: true, data: json.data };
-      } else if (json.error) {
-        return { success: false, error: json.error.message || 'Failed to reset password' };
-      }
-    } catch (e) {
-      // Try next
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { success: true, data: json.data };
+    } else if (json.error) {
+      return { success: false, error: json.error.message || 'Failed to reset password' };
     }
+  } catch (e) {
+    console.error('[API Error] Reset student password failed:', e);
   }
 
   return { success: false, error: 'Unable to connect to server.' };
@@ -966,15 +808,14 @@ export interface AdminCourseItem {
  * Fetch subjects with nested chapters (for materials & pyqs management)
  */
 export async function getAdminSubjects(): Promise<any[]> {
-  const tryUrls = [`${API_BASE_URL}/subjects`, 'http://localhost:5001/api/subjects'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.subjects) {
-        return json.data.subjects;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/subjects`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.subjects) {
+      return json.data.subjects;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin subjects failed:', e);
   }
   return [];
 }
@@ -994,15 +835,14 @@ export async function getAdminChaptersList(subjectId?: string, classLevel?: stri
   if (classLevel) params.push(`class=${encodeURIComponent(classLevel)}`);
   if (params.length > 0) query = `?${params.join('&')}`;
 
-  const tryUrls = [`${API_BASE_URL}/chapters${query}`, `http://localhost:5001/api/chapters${query}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.chapters) {
-        return json.data.chapters;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/chapters${query}`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.chapters) {
+      return json.data.chapters;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin chapters failed:', e);
   }
   return [];
 }
@@ -1013,46 +853,43 @@ export async function createAdminChapter(payload: {
   name: string;
   order?: number;
 }): Promise<{ success: boolean; data?: AdminChapterItem; error?: string }> {
-  const tryUrls = [`${API_BASE_URL}/admin/chapters`, 'http://localhost:5001/api/admin/chapters'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success && json.data) return { success: true, data: json.data };
-      if (json.error) return { success: false, error: json.error.message };
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/chapters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin chapter failed:', e);
   }
   return { success: false, error: 'Network error.' };
 }
 
 export async function deleteAdminChapter(id: string): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/chapters/${id}`, `http://localhost:5001/api/admin/chapters/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/chapters/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin chapter failed:', e);
   }
   return false;
 }
 
 /* --- Materials --- */
 export async function getAdminMaterialsList(): Promise<AdminMaterialItem[]> {
-  const tryUrls = [`${API_BASE_URL}/materials`, 'http://localhost:5001/api/materials'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.materials) {
-        return json.data.materials;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/materials`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.materials) {
+      return json.data.materials;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin materials failed:', e);
   }
   return [];
 }
@@ -1064,46 +901,43 @@ export async function createAdminMaterial(payload: {
   fileUrl?: string;
   noteContent?: string;
 }): Promise<{ success: boolean; data?: AdminMaterialItem; error?: string }> {
-  const tryUrls = [`${API_BASE_URL}/admin/materials`, 'http://localhost:5001/api/admin/materials'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success && json.data) return { success: true, data: json.data };
-      if (json.error) return { success: false, error: json.error.message };
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/materials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin material failed:', e);
   }
   return { success: false, error: 'Network error.' };
 }
 
 export async function deleteAdminMaterial(id: string): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/materials/${id}`, `http://localhost:5001/api/admin/materials/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/materials/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin material failed:', e);
   }
   return false;
 }
 
 /* --- PYQs --- */
 export async function getAdminPYQsList(): Promise<AdminPYQItem[]> {
-  const tryUrls = [`${API_BASE_URL}/pyqs`, 'http://localhost:5001/api/pyqs'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.pyqs) {
-        return json.data.pyqs;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/pyqs`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.pyqs) {
+      return json.data.pyqs;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin PYQs failed:', e);
   }
   return [];
 }
@@ -1117,46 +951,43 @@ export async function createAdminPYQ(payload: {
   fileUrl: string;
   solutionUrl?: string;
 }): Promise<{ success: boolean; data?: AdminPYQItem; error?: string }> {
-  const tryUrls = [`${API_BASE_URL}/admin/pyqs`, 'http://localhost:5001/api/admin/pyqs'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success && json.data) return { success: true, data: json.data };
-      if (json.error) return { success: false, error: json.error.message };
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/pyqs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin PYQ failed:', e);
   }
   return { success: false, error: 'Network error.' };
 }
 
 export async function deleteAdminPYQ(id: string): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/pyqs/${id}`, `http://localhost:5001/api/admin/pyqs/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/pyqs/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin PYQ failed:', e);
   }
   return false;
 }
 
 /* --- Notices --- */
 export async function getAdminNoticesList(): Promise<AdminNoticeItem[]> {
-  const tryUrls = [`${API_BASE_URL}/notices`, 'http://localhost:5001/api/notices'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.notices) {
-        return json.data.notices;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/notices`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.notices) {
+      return json.data.notices;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin notices failed:', e);
   }
   return [];
 }
@@ -1167,46 +998,43 @@ export async function createAdminNotice(payload: {
   scope: 'global' | 'batch';
   batchIds?: string[];
 }): Promise<{ success: boolean; data?: AdminNoticeItem; error?: string }> {
-  const tryUrls = [`${API_BASE_URL}/admin/notices`, 'http://localhost:5001/api/admin/notices'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success && json.data) return { success: true, data: json.data };
-      if (json.error) return { success: false, error: json.error.message };
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/notices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin notice failed:', e);
   }
   return { success: false, error: 'Network error.' };
 }
 
 export async function deleteAdminNotice(id: string): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/notices/${id}`, `http://localhost:5001/api/admin/notices/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/notices/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin notice failed:', e);
   }
   return false;
 }
 
 /* --- Enquiries CRM --- */
 export async function getAdminEnquiriesList(): Promise<AdminEnquiryItem[]> {
-  const tryUrls = [`${API_BASE_URL}/admin/enquiries`, 'http://localhost:5001/api/admin/enquiries'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.enquiries) {
-        return json.data.enquiries;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/enquiries`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.enquiries) {
+      return json.data.enquiries;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin enquiries failed:', e);
   }
   return [];
 }
@@ -1215,33 +1043,31 @@ export async function updateAdminEnquiryStatus(
   id: string,
   status: 'new' | 'contacted' | 'enrolled' | 'closed'
 ): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/enquiries/${id}`, `http://localhost:5001/api/admin/enquiries/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status }),
-      });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/enquiries/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status }),
+    });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Update admin enquiry status failed:', e);
   }
   return false;
 }
 
 /* --- Marketing: Testimonials & Courses --- */
 export async function getAdminTestimonialsList(): Promise<AdminTestimonialItem[]> {
-  const tryUrls = [`${API_BASE_URL}/admin/testimonials`, 'http://localhost:5001/api/admin/testimonials'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.testimonials) {
-        return json.data.testimonials;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/testimonials`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.testimonials) {
+      return json.data.testimonials;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin testimonials failed:', e);
   }
   return [];
 }
@@ -1253,19 +1079,18 @@ export async function createAdminTestimonial(payload: {
   photoUrl?: string;
   isPublished?: boolean;
 }): Promise<{ success: boolean; data?: AdminTestimonialItem; error?: string }> {
-  const tryUrls = [`${API_BASE_URL}/admin/testimonials`, 'http://localhost:5001/api/admin/testimonials'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success && json.data) return { success: true, data: json.data };
-      if (json.error) return { success: false, error: json.error.message };
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/testimonials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin testimonial failed:', e);
   }
   return { success: false, error: 'Network error.' };
 }
@@ -1274,44 +1099,41 @@ export async function updateAdminTestimonial(
   id: string,
   payload: Partial<{ studentName: string; resultText: string; quote: string; photoUrl: string; isPublished: boolean }>
 ): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/testimonials/${id}`, `http://localhost:5001/api/admin/testimonials/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/testimonials/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Update admin testimonial failed:', e);
   }
   return false;
 }
 
 export async function deleteAdminTestimonial(id: string): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/testimonials/${id}`, `http://localhost:5001/api/admin/testimonials/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/testimonials/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin testimonial failed:', e);
   }
   return false;
 }
 
 export async function getAdminCoursesList(): Promise<AdminCourseItem[]> {
-  const tryUrls = [`${API_BASE_URL}/admin/courses`, 'http://localhost:5001/api/admin/courses'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', credentials: 'include' });
-      const json = await res.json();
-      if (json.success && json.data?.courses) {
-        return json.data.courses;
-      }
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/courses`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.courses) {
+      return json.data.courses;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin courses failed:', e);
   }
   return [];
 }
@@ -1324,19 +1146,18 @@ export async function createAdminCourse(payload: {
   description?: string;
   isActive?: boolean;
 }): Promise<{ success: boolean; data?: AdminCourseItem; error?: string }> {
-  const tryUrls = [`${API_BASE_URL}/admin/courses`, 'http://localhost:5001/api/admin/courses'];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success && json.data) return { success: true, data: json.data };
-      if (json.error) return { success: false, error: json.error.message };
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/courses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin course failed:', e);
   }
   return { success: false, error: 'Network error.' };
 }
@@ -1345,33 +1166,28 @@ export async function updateAdminCourse(
   id: string,
   payload: Partial<{ name: string; class: 'XI' | 'XII'; stream: 'JEE' | 'NEET' | 'Foundation'; fee: number; description: string; isActive: boolean }>
 ): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/courses/${id}`, `http://localhost:5001/api/admin/courses/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/courses/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Update admin course failed:', e);
   }
   return false;
 }
 
 export async function deleteAdminCourse(id: string): Promise<boolean> {
-  const tryUrls = [`${API_BASE_URL}/admin/courses/${id}`, `http://localhost:5001/api/admin/courses/${id}`];
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-      const json = await res.json();
-      if (json.success) return true;
-    } catch (e) {}
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/courses/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin course failed:', e);
   }
   return false;
 }
-
-
-

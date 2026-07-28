@@ -13,17 +13,14 @@ import chatbotRoutes from './routes/chatbotRoutes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-// TODO (Phase 12 Deployment Lockdown): Restrict allowedOrigins strictly to process.env.FRONTEND_URL before production deployment.
+// Phase 12 Deployment Lockdown (DONE): CORS restricted to production Vercel
+// origin + local dev origin. credentials: true required for httpOnly cookie auth.
 const allowedOrigins = [
   FRONTEND_URL,
   'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001',
 ];
 
 // Connect to MongoDB
@@ -33,10 +30,16 @@ connectDB();
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      // Allow requests with no origin (e.g. server-to-server, curl, mobile apps)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, true);
+        console.warn(`[CORS] Blocked request from origin: ${origin}`);
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
       }
     },
     credentials: true,
