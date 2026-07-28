@@ -21,7 +21,7 @@ export default function StudentDashboardLayout({
       if (!isAuthenticated || !user) {
         router.replace('/signin');
       } else if (user.role === 'admin') {
-        router.replace('/admin/dashboard');
+        router.replace('/admin');
       }
     }
   }, [loading, isAuthenticated, user, router]);

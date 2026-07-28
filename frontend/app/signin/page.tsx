@@ -18,7 +18,7 @@ export default function SignInPage() {
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
       if (user.role === 'admin') {
-        router.replace('/admin/dashboard');
+        router.replace('/admin');
       } else {
         router.replace('/dashboard');
       }
@@ -42,7 +42,7 @@ export default function SignInPage() {
       if (res.success && res.data) {
         // Successful login: redirect based on server-verified role payload
         if (res.data.role === 'admin') {
-          router.replace('/admin/dashboard');
+          router.replace('/admin');
         } else {
           router.replace('/dashboard');
         }
