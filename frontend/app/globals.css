@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Colors */
+  --bg-navy-start: #0a1128;
+  --bg-navy-end: #16204a;
+  --glass-fill: rgba(255, 255, 255, 0.08);
+  --glass-fill-strong: rgba(255, 255, 255, 0.14);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --gold: #e8b84a;
+  --gold-glow: rgba(232, 184, 74, 0.35);
+  --blue-accent: #4da8ff;
+  --emerald: #1fae7a;
+  --rose: #e5556b;
+  --text-primary-dark-bg: #f7f7f5;
+  --text-secondary-dark-bg: rgba(247, 247, 245, 0.7);
+  --text-primary-light-bg: #0f1b3d;
+  --content-bg-light: #f7f7f5;
+  --content-panel-light: #ffffff;
+
+  /* Spacing / Radius */
+  --radius-card: 16px;
+  --radius-panel: 12px;
+  --radius-button: 9999px;
+
+  /* Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-gold-glow: 0 0 24px var(--gold-glow);
+  --shadow-panel-light: 0 2px 8px rgba(15, 27, 61, 0.08);
+}
+
+body {
+  font-family: var(--font-inter), sans-serif;
+  color: var(--text-primary-dark-bg);
+  background-color: var(--bg-navy-start);
+  min-height: 100vh;
+}
+
+/* Glassmorphism Panel (Marketing & Hero Context) */
+.glass-panel {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-glass);
+}
+
+/* Glassmorphism Panel for Mobile (Reduced blur for performance) */
+@media (max-width: 639px) {
+  .glass-panel {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* Gold Shimmer Button */
+.btn-gold {
+  background-color: var(--gold);
+  color: var(--text-primary-light-bg);
+  font-weight: 600;
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1.75rem;
+  transition: all 0.2s ease-in-out;
+  box-shadow: var(--shadow-gold-glow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-gold:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 32px rgba(232, 184, 74, 0.55);
+}
+
+.btn-gold:active {
+  transform: scale(0.98);
+}
+
+/* Dashboard Content Panel (Solid Light, High Legibility, No Blur) */
+.dashboard-panel-light {
+  background-color: var(--content-panel-light);
+  border: 1px solid rgba(15, 27, 61, 0.08);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel-light);
+  color: var(--text-primary-light-bg);
+}

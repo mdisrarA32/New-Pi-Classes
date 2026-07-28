@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "quote": "Success in JEE and NEET isn't about being smart; it's about solving numericals consistently every single day.",
+    "author": "NPC Faculty Motto",
+    "language": "English"
+  },
+  {
+    "id": 2,
+    "quote": "कड़ी मेहनत का कोई विकल्प नहीं होता। आज का अभ्यास ही कल की रैंक तय करेगा।",
+    "author": "Dr. Anita Verma",
+    "language": "Hindi"
+  },
+  {
+    "id": 3,
+    "quote": "Revision aur NCERT read karna kabhi miss mat karo. Concepts clear hain toh Rank pakki hai!",
+    "author": "Er. Rajesh Sharma",
+    "language": "Hinglish"
+  },
+  {
+    "id": 4,
+    "quote": "The only way to master Physics is to love the physical intuition behind every formula.",
+    "author": "Prof. Alok Kumar",
+    "language": "English"
+  },
+  {
+    "id": 5,
+    "quote": "सपने वो नहीं जो हम सोते हुए देखते हैं, सपने वो हैं जो हमें सोने नहीं देते।",
+    "author": "Dr. APJ Abdul Kalam",
+    "language": "Hindi"
+  },
+  {
+    "id": 6,
+    "quote": "DPPs daily solve karo aur mock tests ka proper analysis karo. Small steps lead to big ranks!",
+    "author": "NPC Mentor Desk",
+    "language": "Hinglish"
+  }
+]
