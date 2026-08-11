@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import TestimonialsMarquee from '@/components/TestimonialsMarquee';
+import LocationMap from '@/components/LocationMap';
 import { getCourses, getTestimonials } from '@/lib/api';
 
 export const revalidate = 60;
@@ -138,51 +140,27 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* LIVE TESTIMONIALS SECTION */}
-        <section className="bg-white/5 py-20 border-y border-white/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="font-display font-bold text-3xl sm:text-4xl mb-4">
-                Student Success Stories
-              </h2>
-              <p className="text-text-dark-secondary max-w-2xl mx-auto text-sm sm:text-base">
-                Hear directly from our toppers who cracked JEE, NEET, and Board exams from Sheohar.
-              </p>
-            </div>
-
-            {testimonials.length === 0 ? (
-              <div className="glass-panel p-8 text-center text-text-dark-secondary">
-                <p className="text-base">No published student testimonials yet. Published student testimonials will appear here automatically.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {testimonials.map((t) => (
-                  <div key={t._id || t.id} className="glass-panel p-6 flex flex-col justify-between">
-                    <p className="text-sm text-text-dark-secondary italic leading-relaxed mb-6">
-                      "{t.quote || t.testimonialText}"
-                    </p>
-                    <div className="flex items-center space-x-4 border-t border-white/10 pt-4">
-                      <div className="w-10 h-10 rounded-full bg-gold/20 border border-gold/40 flex items-center justify-center font-bold text-gold">
-                        {t.studentName.charAt(0)}
-                      </div>
-                      <div>
-                        <h4 className="font-display font-bold text-sm text-text-dark-primary">
-                          {t.studentName}
-                        </h4>
-                        <p className="text-xs text-gold font-mono">
-                          {t.resultText || `${t.examCleared} — ${t.rankAchieved}`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* LIVE TESTIMONIALS MARQUEE SECTION */}
+        <section className="bg-white/5 py-16 sm:py-20 border-y border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 text-center">
+            <h2 className="font-display font-bold text-3xl sm:text-4xl mb-3">
+              Student Success Stories
+            </h2>
+            <p className="text-text-dark-secondary max-w-2xl mx-auto text-sm sm:text-base">
+              Hear directly from our toppers who cracked JEE, NEET, and Board exams from Sheohar. Hover to pause.
+            </p>
           </div>
+
+          <TestimonialsMarquee testimonials={testimonials} />
+        </section>
+
+        {/* LOCATION MAP SECTION */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
+          <LocationMap />
         </section>
 
         {/* DEMO ENQUIRY BANNER */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           <div className="glass-panel p-8 sm:p-12 text-center relative overflow-hidden border-gold/40">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gold/10 rounded-full blur-2xl pointer-events-none"></div>
             <h2 className="font-display font-bold text-3xl sm:text-4xl mb-4">

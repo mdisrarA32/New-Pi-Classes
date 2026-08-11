@@ -8,6 +8,7 @@ import {
   resetStudentPassword,
   deactivateStudent,
   reactivateStudent,
+  deleteStudent,
 } from '../controllers/studentController';
 import {
   createBatch,
@@ -34,7 +35,13 @@ import {
   updateCourse,
   deleteCourse,
 } from '../controllers/courseController';
-import { createTest, getAdminTests } from '../controllers/testController';
+import {
+  getAdminFacultyList,
+  createFaculty,
+  updateFaculty,
+  deleteFaculty,
+} from '../controllers/facultyController';
+import { createTest, getAdminTests, getAdminTestById } from '../controllers/testController';
 
 const router = Router();
 
@@ -48,8 +55,9 @@ router.get('/students', getStudents);
 router.get('/students/:id', getStudentById);
 router.patch('/students/:id', updateStudent);
 router.post('/students/:id/reset-password', resetStudentPassword);
-router.delete('/students/:id', deactivateStudent);
+router.patch('/students/:id/deactivate', deactivateStudent);
 router.patch('/students/:id/reactivate', reactivateStudent);
+router.delete('/students/:id', deleteStudent);
 
 // Batch Management
 router.post('/batches', createBatch);
@@ -89,8 +97,16 @@ router.get('/courses', getAdminCourses);
 router.patch('/courses/:id', updateCourse);
 router.delete('/courses/:id', deleteCourse);
 
+// Faculty Management
+router.get('/faculty', getAdminFacultyList);
+router.post('/faculty', createFaculty);
+router.patch('/faculty/:id', updateFaculty);
+router.put('/faculty/:id', updateFaculty);
+router.delete('/faculty/:id', deleteFaculty);
+
 // Test Engine Management
 router.post('/tests', createTest);
 router.get('/tests', getAdminTests);
+router.get('/tests/:id', getAdminTestById);
 
 export default router;

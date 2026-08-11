@@ -9,6 +9,7 @@ import {
   AdminNoticeItem,
   AdminBatchItem,
 } from '@/lib/api';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function AdminNoticesPage() {
   const [notices, setNotices] = useState<AdminNoticeItem[]>([]);
@@ -25,6 +26,12 @@ export default function AdminNoticesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -83,15 +90,22 @@ export default function AdminNoticesPage() {
     }
   };
 
-  const handleDelete = async (notice: AdminNoticeItem) => {
-    if (!confirm(`Delete announcement "${notice.title}"?`)) return;
-    const ok = await deleteAdminNotice(notice.id);
-    if (ok) {
-      setActionSuccess(`Notice "${notice.title}" deleted.`);
-      fetchData();
-    } else {
-      alert('Failed to delete notice.');
-    }
+  const handleDelete = (notice: AdminNoticeItem) => {
+    setPendingConfirm({
+      title: 'Delete Announcement',
+      message: `Are you sure you want to delete the announcement "${notice.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Notice',
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const ok = await deleteAdminNotice(notice.id);
+        if (ok) {
+          setActionSuccess(`Notice "${notice.title}" deleted.`);
+          fetchData();
+        } else {
+          alert('Failed to delete notice.');
+        }
+      },
+    });
   };
 
   return (
@@ -302,6 +316,16 @@ export default function AdminNoticesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant="danger"
+        onConfirm={() => pendingConfirm?.onConfirm()}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

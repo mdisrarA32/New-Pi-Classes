@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import LocationMap from '@/components/LocationMap';
 import { submitEnquiry } from '@/lib/api';
 
 export default function ContactPage() {
@@ -99,7 +100,7 @@ export default function ContactPage() {
               Fill out the form to register for 3 free trial classes. Experience our interactive teaching methodology, personalized doubt solving, and structured study material.
             </p>
 
-            <div className="glass-panel p-6 space-y-4 text-xs sm:text-sm">
+            <div className="glass-panel p-6 space-y-4 text-xs sm:text-sm mb-6">
               <div className="flex items-start space-x-3">
                 <span className="text-gold text-lg font-bold">🏢</span>
                 <div>
@@ -141,6 +142,8 @@ export default function ContactPage() {
                 </div>
               </div>
             </div>
+
+            <LocationMap />
           </div>
 
           {/* Right Column: Interactive Demo Request Form */}

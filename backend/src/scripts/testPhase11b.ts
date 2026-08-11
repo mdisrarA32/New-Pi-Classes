@@ -1,3 +1,13 @@
+/**
+ * ⚠️ WARNING: THIS TEST SCRIPT RUNS DESTRUCTIVELY ON THE DATABASE.
+ * Running this script will execute deleteMany({}) and clear data
+ * (including Users, Batches, Subjects, etc.) from whatever database
+ * MONGO_URI points to in your .env configuration.
+ *
+ * Ensure you are NOT running this against a production or populated
+ * development database.
+ */
+
 import http from 'http';
 import dotenv from 'dotenv';
 import { connectDB } from '../config/db';
@@ -5,8 +15,10 @@ import { User } from '../models/User';
 import { Batch } from '../models/Batch';
 import { Subject } from '../models/Subject';
 import { Chapter } from '../models/Chapter';
+import { enforceDestructiveGuard } from './destructiveGuard';
 
 dotenv.config();
+enforceDestructiveGuard();
 
 function makeRequest(method: string, path: string, body?: any, cookie?: string) {
   return new Promise<{ status: number; body: any; headers: http.IncomingHttpHeaders }>((resolve, reject) => {

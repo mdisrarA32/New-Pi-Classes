@@ -40,6 +40,7 @@ export default function StudentDashboardLayout({
 
   const navItems = [
     { href: '/dashboard', label: 'Overview', icon: '📊' },
+    { href: '/dashboard/tests', label: 'Mock Tests', icon: '⏱️' },
     { href: '/dashboard/materials', label: 'Study Materials', icon: '📚' },
     { href: '/dashboard/pyqs', label: 'PYQ Bank', icon: '📝' },
     { href: '/dashboard/notices', label: 'Notices & Updates', icon: '📢' },
@@ -93,17 +94,42 @@ export default function StudentDashboardLayout({
           </div>
 
           {/* Student Profile Card (Zero Blur Solid Light Card) */}
-          <div className="p-4 m-4 rounded-xl bg-[#F7F7F5] border border-[#0F1B3D]/10 text-xs">
-            <div className="font-bold text-[#0F1B3D] text-sm font-display mb-0.5">
-              {user.fullName}
+          <div className="p-4 m-4 rounded-xl bg-[#F7F7F5] border border-[#0F1B3D]/10 text-xs space-y-2">
+            <div>
+              <div className="font-bold text-[#0F1B3D] text-sm font-display mb-0.5">
+                {user.fullName}
+              </div>
+              <div className="text-[#0F1B3D]/70 font-mono">@{user.username}</div>
             </div>
-            <div className="text-[#0F1B3D]/70 font-mono">@{user.username}</div>
-            <div className="mt-2 pt-2 border-t border-[#0F1B3D]/10 flex items-center justify-between text-[11px]">
-              <span className="px-2 py-0.5 rounded bg-[#E8B84A]/20 text-[#0F1B3D] font-mono font-bold">
-                Class {user.class || 'XI'}
-              </span>
-              <span className="text-[#0F1B3D]/60 font-mono">Enrolled</span>
-            </div>
+
+            {user.batch ? (
+              <div className="pt-2 border-t border-[#0F1B3D]/10 space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-[#0F1B3D]/80">Enrolled Batch</span>
+                  <span className="px-1.5 py-0.5 rounded bg-[#E8B84A]/20 text-[#0F1B3D] font-mono font-bold text-[10px]">
+                    {user.batch.stream}
+                  </span>
+                </div>
+                <div className="font-display font-bold text-xs text-[#0F1B3D] leading-snug">
+                  {user.batch.name}
+                </div>
+                <div className="text-[10px] font-mono text-[#0F1B3D]/60 flex items-center justify-between pt-0.5">
+                  <span>Class {user.batch.class || user.class}</span>
+                  {user.batch.timingLabel && (
+                    <span className="bg-[#0F1B3D]/5 border border-[#0F1B3D]/10 px-1.5 py-0.5 rounded">
+                      {user.batch.timingLabel}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-[#0F1B3D]/10 flex items-center justify-between text-[11px]">
+                <span className="px-2 py-0.5 rounded bg-[#E8B84A]/20 text-[#0F1B3D] font-mono font-bold">
+                  Class {user.class || 'XI'}
+                </span>
+                <span className="text-[#0F1B3D]/60 font-mono">Enrolled</span>
+              </div>
+            )}
           </div>
 
           {/* Navigation Links */}

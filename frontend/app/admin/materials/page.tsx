@@ -12,6 +12,7 @@ import {
   AdminMaterialItem,
   AdminChapterItem,
 } from '@/lib/api';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function AdminMaterialsPage() {
   const [activeTab, setActiveTab] = useState<'materials' | 'chapters'>('materials');
@@ -49,6 +50,9 @@ export default function AdminMaterialsPage() {
   const [newChapterOrder, setNewChapterOrder] = useState<number>(1);
   const [chapterFormError, setChapterFormError] = useState<string | null>(null);
   const [isChapterSubmitting, setIsChapterSubmitting] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string; message: string; confirmLabel: string; onConfirm: () => void;
+  } | null>(null);
 
   // Fetch all initial data
   const fetchData = async () => {
@@ -140,15 +144,22 @@ export default function AdminMaterialsPage() {
     }
   };
 
-  const handleDeleteMaterial = async (mat: AdminMaterialItem) => {
-    if (!confirm(`Delete study material "${mat.title}"?`)) return;
-    const ok = await deleteAdminMaterial(mat.id);
-    if (ok) {
-      setActionSuccess(`Material "${mat.title}" deleted.`);
-      fetchData();
-    } else {
-      alert('Failed to delete material.');
-    }
+  const handleDeleteMaterial = (mat: AdminMaterialItem) => {
+    setPendingConfirm({
+      title: 'Delete Study Material',
+      message: `Are you sure you want to delete the study material "${mat.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Material',
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const ok = await deleteAdminMaterial(mat.id);
+        if (ok) {
+          setActionSuccess(`Material "${mat.title}" deleted.`);
+          fetchData();
+        } else {
+          alert('Failed to delete material.');
+        }
+      },
+    });
   };
 
   // --- Handlers: Chapters Management ---
@@ -190,15 +201,22 @@ export default function AdminMaterialsPage() {
     }
   };
 
-  const handleDeleteChapter = async (chap: AdminChapterItem) => {
-    if (!confirm(`Delete chapter "${chap.name}"?`)) return;
-    const ok = await deleteAdminChapter(chap.id);
-    if (ok) {
-      setActionSuccess(`Chapter "${chap.name}" deleted.`);
-      fetchData();
-    } else {
-      alert('Failed to delete chapter.');
-    }
+  const handleDeleteChapter = (chap: AdminChapterItem) => {
+    setPendingConfirm({
+      title: 'Delete Chapter',
+      message: `Are you sure you want to delete the chapter "${chap.name}"? All materials within this chapter may become orphaned. This action cannot be undone.`,
+      confirmLabel: 'Delete Chapter',
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const ok = await deleteAdminChapter(chap.id);
+        if (ok) {
+          setActionSuccess(`Chapter "${chap.name}" deleted.`);
+          fetchData();
+        } else {
+          alert('Failed to delete chapter.');
+        }
+      },
+    });
   };
 
   // Filtered chapter list for Chapters Table
@@ -735,6 +753,16 @@ export default function AdminMaterialsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant="danger"
+        onConfirm={() => pendingConfirm?.onConfirm()}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

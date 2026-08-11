@@ -74,3 +74,7 @@ export const clearFailedLogin = (username: string, ip: string): void => {
   const key = `${ip}:${username.toLowerCase().trim()}`;
   failedAttemptsStore.delete(key);
 };
+
+export const clearAllRateLimits = (): void => {
+  failedAttemptsStore.clear();
+};

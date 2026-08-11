@@ -99,7 +99,7 @@ export const createStudent = async (req: Request, res: Response): Promise<void> 
  */
 export const getStudents = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { batchId, class: classLevel, search, status = 'active', page = '1', limit = '20' } = req.query;
+    const { batchId, class: classLevel, search, status = 'all', page = '1', limit = '100' } = req.query;
 
     const query: any = { role: 'student' };
 
@@ -117,7 +117,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
     }
 
     const pageNum = parseInt(page as string, 10) || 1;
-    const limitNum = parseInt(limit as string, 10) || 20;
+    const limitNum = parseInt(limit as string, 10) || 100;
     const skip = (pageNum - 1) * limitNum;
 
     const [students, total] = await Promise.all([
@@ -133,6 +133,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
     const formatted = students.map((s: any) => ({
       id: s._id.toString(),
       name: s.fullName,
+      fullName: s.fullName,
       username: s.username,
       class: s.class,
       batchId: s.batchId?._id?.toString() || null,
@@ -316,9 +317,9 @@ export const resetStudentPassword = async (
 };
 
 /**
- * DELETE /api/admin/students/:id
+ * PATCH /api/admin/students/:id/deactivate
  * Auth: Admin only
- * Soft-deletes / deactivates a student account.
+ * Deactivates a student account (disables login).
  */
 export const deactivateStudent = async (
   req: Request,
@@ -380,6 +381,39 @@ export const reactivateStudent = async (
     res.status(200).json({
       success: true,
       data: { id: student._id.toString(), username: student.username, isActive: true },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: (error as Error).message },
+    });
+  }
+};
+
+/**
+ * DELETE /api/admin/students/:id
+ * Auth: Admin only
+ * Permanently deletes a student record from the database.
+ */
+export const deleteStudent = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const student = await User.findOneAndDelete({ _id: id, role: 'student' });
+
+    if (!student) {
+      res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Student record not found' },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { id: student._id.toString(), username: student.username, deleted: true },
     });
   } catch (error) {
     res.status(500).json({

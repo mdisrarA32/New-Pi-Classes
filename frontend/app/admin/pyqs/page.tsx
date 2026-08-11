@@ -8,6 +8,7 @@ import {
   getAdminSubjects,
   AdminPYQItem,
 } from '@/lib/api';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function AdminPYQsPage() {
   const [pyqs, setPyqs] = useState<AdminPYQItem[]>([]);
@@ -26,6 +27,9 @@ export default function AdminPYQsPage() {
   const [year, setYear] = useState<number>(2024);
   const [fileUrl, setFileUrl] = useState('');
   const [solutionUrl, setSolutionUrl] = useState('');
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string; message: string; confirmLabel: string; onConfirm: () => void;
+  } | null>(null);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,15 +91,22 @@ export default function AdminPYQsPage() {
     }
   };
 
-  const handleDelete = async (pyq: AdminPYQItem) => {
-    if (!confirm(`Delete PYQ paper "${pyq.title}"?`)) return;
-    const ok = await deleteAdminPYQ(pyq.id);
-    if (ok) {
-      setActionSuccess(`PYQ paper "${pyq.title}" deleted.`);
-      fetchData();
-    } else {
-      alert('Failed to delete PYQ.');
-    }
+  const handleDelete = (pyq: AdminPYQItem) => {
+    setPendingConfirm({
+      title: 'Delete PYQ Paper',
+      message: `Are you sure you want to delete the PYQ paper "${pyq.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete PYQ',
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const ok = await deleteAdminPYQ(pyq.id);
+        if (ok) {
+          setActionSuccess(`PYQ paper "${pyq.title}" deleted.`);
+          fetchData();
+        } else {
+          alert('Failed to delete PYQ.');
+        }
+      },
+    });
   };
 
   const filteredPYQs = pyqs.filter((p) => {
@@ -399,6 +410,16 @@ export default function AdminPYQsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant="danger"
+        onConfirm={() => pendingConfirm?.onConfirm()}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

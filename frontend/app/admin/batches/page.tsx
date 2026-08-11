@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getAdminBatches, createAdminBatch, toggleBatchStatus, AdminBatchItem } from '@/lib/api';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function AdminBatchesPage() {
   const [batches, setBatches] = useState<AdminBatchItem[]>([]);
@@ -17,6 +18,12 @@ export default function AdminBatchesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const fetchBatches = async () => {
     setLoading(true);
@@ -68,19 +75,23 @@ export default function AdminBatchesPage() {
     }
   };
 
-  const handleToggleStatus = async (batch: AdminBatchItem) => {
+  const handleToggleStatus = (batch: AdminBatchItem) => {
     const actionLabel = batch.isActive ? 'Archive' : 'Reactivate';
-    if (!confirm(`Are you sure you want to ${actionLabel.toLowerCase()} the batch "${batch.name}"?`)) {
-      return;
-    }
-
-    const success = await toggleBatchStatus(batch.id, batch.isActive);
-    if (success) {
-      setActionSuccess(`Batch "${batch.name}" ${batch.isActive ? 'archived' : 'reactivated'} successfully!`);
-      fetchBatches();
-    } else {
-      alert(`Failed to ${actionLabel.toLowerCase()} batch.`);
-    }
+    setPendingConfirm({
+      title: `${actionLabel} Batch`,
+      message: `Are you sure you want to ${actionLabel.toLowerCase()} the batch "${batch.name}"? ${batch.isActive ? 'Students in this batch will retain their accounts but no new assignments can target this batch.' : 'This batch will become available for student assignments again.'}`,
+      confirmLabel: actionLabel,
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const success = await toggleBatchStatus(batch.id, batch.isActive);
+        if (success) {
+          setActionSuccess(`Batch "${batch.name}" ${batch.isActive ? 'archived' : 'reactivated'} successfully!`);
+          fetchBatches();
+        } else {
+          alert(`Failed to ${actionLabel.toLowerCase()} batch.`);
+        }
+      },
+    });
   };
 
   return (
@@ -315,6 +326,16 @@ export default function AdminBatchesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant="warning"
+        onConfirm={() => pendingConfirm?.onConfirm()}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

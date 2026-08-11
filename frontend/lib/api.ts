@@ -71,6 +71,37 @@ export async function getTestimonials(): Promise<TestimonialData[]> {
   }
 }
 
+export interface FacultyItem {
+  id: string;
+  name: string;
+  role: string;
+  subject: 'Physics' | 'Chemistry' | 'Biology' | 'Mathematics';
+  qualification: string;
+  specialization?: string;
+  bio: string;
+  photoUrl?: string | null;
+  isPublished?: boolean;
+  order?: number;
+  createdAt?: string;
+}
+
+/**
+ * Fetch published faculty members from backend
+ */
+export async function getPublicFaculty(): Promise<FacultyItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/faculty`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    return json.success ? json.data.faculty : [];
+  } catch (error) {
+    console.error('[API Error] Fetch faculty failed:', error);
+    return [];
+  }
+}
+
 /**
  * Submit public student enquiry
  */
@@ -103,6 +134,13 @@ export interface UserSession {
   username: string;
   class?: string;
   batchId?: string;
+  batch?: {
+    id: string;
+    name: string;
+    class: string;
+    stream: 'JEE' | 'NEET' | 'Foundation';
+    timingLabel?: string;
+  } | null;
 }
 
 /**
@@ -693,15 +731,31 @@ export async function createAdminStudent(payload: {
  * Toggle student active status (Deactivate / Reactivate)
  */
 export async function toggleStudentStatus(studentId: string, currentlyActive: boolean): Promise<boolean> {
-  const endpoint = currentlyActive ? `/admin/students/${studentId}` : `/admin/students/${studentId}/reactivate`;
-  const method = currentlyActive ? 'DELETE' : 'PATCH';
+  const endpoint = currentlyActive ? `/admin/students/${studentId}/deactivate` : `/admin/students/${studentId}/reactivate`;
 
   try {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { method, credentials: 'include' });
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { method: 'PATCH', credentials: 'include' });
     const json = await res.json();
     if (json.success) return true;
   } catch (e) {
     console.error('[API Error] Toggle student status failed:', e);
+  }
+  return false;
+}
+
+/**
+ * Permanently delete student record
+ */
+export async function deleteAdminStudent(studentId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/students/${studentId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin student failed:', e);
   }
   return false;
 }
@@ -1191,3 +1245,177 @@ export async function deleteAdminCourse(id: string): Promise<boolean> {
   }
   return false;
 }
+
+/* --- Faculty Management --- */
+export async function getAdminFacultyList(): Promise<FacultyItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/faculty`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.faculty) {
+      return json.data.faculty;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin faculty failed:', e);
+  }
+  return [];
+}
+
+export async function createAdminFaculty(payload: {
+  name: string;
+  role: string;
+  subject: 'Physics' | 'Chemistry' | 'Biology' | 'Mathematics';
+  qualification: string;
+  specialization?: string;
+  bio: string;
+  photoUrl?: string;
+  isPublished?: boolean;
+  order?: number;
+}): Promise<{ success: boolean; data?: FacultyItem; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/faculty`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin faculty failed:', e);
+  }
+  return { success: false, error: 'Network error.' };
+}
+
+export async function updateAdminFaculty(
+  id: string,
+  payload: Partial<{
+    name: string;
+    role: string;
+    subject: 'Physics' | 'Chemistry' | 'Biology' | 'Mathematics';
+    qualification: string;
+    specialization: string;
+    bio: string;
+    photoUrl: string;
+    isPublished: boolean;
+    order: number;
+  }>
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/faculty/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Update admin faculty failed:', e);
+  }
+  return false;
+}
+
+export async function deleteAdminFaculty(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/faculty/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin faculty failed:', e);
+  }
+  return false;
+}
+
+/* ==========================================================================
+   ADMIN TEST SCHEDULER & AUTHORING API HELPERS (PHASE 11c)
+   ========================================================================== */
+
+export interface AdminTestListItem {
+  id: string;
+  title: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: 'upcoming' | 'active' | 'completed';
+  negativeMarkingRatio: number;
+  batches: string[];
+  questionCount: number;
+  createdAt: string;
+}
+
+export interface AdminTestDetail {
+  id: string;
+  _id: string;
+  title: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  negativeMarkingRatio: number;
+  subjectIds: { _id: string; id: string; name: string }[];
+  batchIds: { _id: string; id: string; name: string; class: string; stream: string }[];
+  questions: {
+    id: string;
+    text: string;
+    options: string[];
+    correctOptionIndex: number;
+    marks: number;
+  }[];
+  createdAt?: string;
+}
+
+export async function getAdminTestsList(): Promise<AdminTestListItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/tests`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.tests) {
+      return json.data.tests;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin tests failed:', e);
+  }
+  return [];
+}
+
+export async function getAdminTestById(id: string): Promise<AdminTestDetail | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/tests/${id}`, { method: 'GET', credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.data?.test) {
+      return json.data.test;
+    }
+  } catch (e) {
+    console.error('[API Error] Fetch admin test by id failed:', e);
+  }
+  return null;
+}
+
+export async function createAdminTest(payload: {
+  title: string;
+  subjectIds: string[];
+  batchIds: string[];
+  scheduledAt: string;
+  durationMinutes: number;
+  negativeMarkingRatio: number;
+  questions: {
+    id: string;
+    text: string;
+    options: string[];
+    correctOptionIndex: number;
+    marks: number;
+  }[];
+}): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/tests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.success && json.data) return { success: true, data: json.data };
+    if (json.error) return { success: false, error: json.error.message };
+  } catch (e) {
+    console.error('[API Error] Create admin test failed:', e);
+  }
+  return { success: false, error: 'Network error.' };
+}
+

@@ -50,8 +50,22 @@ export default function StudentDashboardHome() {
             <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-[#0F1B3D]">
               Welcome back, {user?.fullName || 'Student'}! 👋
             </h1>
-            <p className="text-xs sm:text-sm text-[#0F1B3D]/70 mt-1">
-              Class {user?.class || 'XI'} Aspirant • New Pi Classes Sheohar
+            <p className="text-xs sm:text-sm text-[#0F1B3D]/70 mt-1 flex flex-wrap items-center gap-2">
+              <span>Class {user?.batch?.class || user?.class || 'XI'} Aspirant</span>
+              {user?.batch && (
+                <>
+                  <span>•</span>
+                  <span className="font-semibold text-[#0F1B3D]">{user.batch.name}</span>
+                  <span className="px-2 py-0.5 rounded bg-[#E8B84A]/20 text-[#0F1B3D] font-mono text-xs font-bold">
+                    {user.batch.stream}
+                  </span>
+                  {user.batch.timingLabel && (
+                    <span className="px-2 py-0.5 rounded bg-[#0F1B3D]/5 border border-[#0F1B3D]/10 font-mono text-xs text-[#0F1B3D]">
+                      {user.batch.timingLabel}
+                    </span>
+                  )}
+                </>
+              )}
             </p>
           </div>
 
@@ -87,8 +101,31 @@ export default function StudentDashboardHome() {
         </div>
       </div>
 
-      {/* Quick Action Navigation Grid (Solid Light Panels, Crisp Borders, Zero Blur) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Quick Action Navigation Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Mock Tests Card */}
+        <Link
+          href="/dashboard/tests"
+          className="bg-white border border-[#0F1B3D]/10 hover:border-[#0F1B3D]/30 rounded-xl p-6 flex flex-col justify-between transition-all group shadow-sm"
+        >
+          <div>
+            <div className="w-10 h-10 rounded-lg bg-[#E5556B]/15 text-[#E5556B] flex items-center justify-center text-xl mb-4">
+              ⏱️
+            </div>
+            <h3 className="font-display font-bold text-lg text-[#0F1B3D] mb-2 group-hover:text-[#E5556B] transition-colors">
+              Mock Tests
+            </h3>
+            <p className="text-xs text-[#0F1B3D]/70 leading-relaxed">
+              Attempt active exams, view scheduled tests, and analyze performance rankings.
+            </p>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-[#0F1B3D]/10 flex items-center justify-between text-xs font-semibold text-[#0F1B3D]">
+            <span>Take Tests</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </Link>
+
         {/* Study Materials Card */}
         <Link
           href="/dashboard/materials"

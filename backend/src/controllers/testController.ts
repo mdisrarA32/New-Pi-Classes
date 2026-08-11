@@ -134,6 +134,8 @@ export const createTest = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+
+
 /**
  * GET /api/admin/tests
  * Auth: Admin only
@@ -568,3 +570,37 @@ export const getStudentTestResult = async (req: Request, res: Response): Promise
     });
   }
 };
+
+/**
+ * GET /api/admin/tests/:id
+ * Auth: Admin only
+ * Fetches the full details of a specific test, including questions and correct options, for admin display.
+ */
+export const getAdminTestById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const test = await Test.findById(id)
+      .populate('subjectIds', 'name')
+      .populate('batchIds', 'name class stream')
+      .lean();
+
+    if (!test) {
+      res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Test not found' },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { test },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: (error as Error).message },
+    });
+  }
+};
+

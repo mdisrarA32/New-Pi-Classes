@@ -23,7 +23,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await User.findOne({ username: username.toString().toLowerCase().trim() });
+    const user = await User.findOne({ username: username.toString().toLowerCase().trim() }).populate('batchId');
 
     if (!user || !user.isActive) {
       recordFailedLogin(username, req.ip || '');
@@ -54,10 +54,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Success - clear failure counter & issue httpOnly token cookie
     clearFailedLogin(username, req.ip || '');
 
+    const batchDoc = user.batchId && typeof user.batchId === 'object' && 'name' in user.batchId ? (user.batchId as any) : null;
+    const batchIdStr = batchDoc ? batchDoc._id.toString() : (user.batchId ? user.batchId.toString() : null);
+
     sendAuthTokenCookie(res, {
       id: user._id.toString(),
       role: user.role,
-      batchId: user.batchId ? user.batchId.toString() : null,
+      batchId: batchIdStr,
     });
 
     res.status(200).json({
@@ -66,8 +69,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         user: {
           id: user._id.toString(),
           name: user.fullName,
+          fullName: user.fullName,
+          username: user.username,
           role: user.role,
-          batchId: user.batchId ? user.batchId.toString() : null,
+          class: user.class || (batchDoc ? batchDoc.class : null),
+          batchId: batchIdStr,
+          batch: batchDoc ? {
+            id: batchDoc._id.toString(),
+            name: batchDoc.name,
+            class: batchDoc.class,
+            stream: batchDoc.stream,
+            timingLabel: batchDoc.timingLabel || '',
+          } : null,
         },
       },
     });
@@ -109,7 +122,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await User.findById(req.user.id).select('-passwordHash');
+    const user = await User.findById(req.user.id).populate('batchId').select('-passwordHash');
 
     if (!user || !user.isActive) {
       res.status(401).json({
@@ -119,13 +132,26 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const batchDoc = user.batchId && typeof user.batchId === 'object' && 'name' in user.batchId ? (user.batchId as any) : null;
+    const batchIdStr = batchDoc ? batchDoc._id.toString() : (user.batchId ? user.batchId.toString() : null);
+
     res.status(200).json({
       success: true,
       data: {
         id: user._id.toString(),
         name: user.fullName,
+        fullName: user.fullName,
+        username: user.username,
         role: user.role,
-        batchId: user.batchId ? user.batchId.toString() : null,
+        class: user.class || (batchDoc ? batchDoc.class : null),
+        batchId: batchIdStr,
+        batch: batchDoc ? {
+          id: batchDoc._id.toString(),
+          name: batchDoc.name,
+          class: batchDoc.class,
+          stream: batchDoc.stream,
+          timingLabel: batchDoc.timingLabel || '',
+        } : null,
       },
     });
   } catch (error) {

@@ -6,10 +6,12 @@ import {
   getAdminBatches,
   createAdminStudent,
   toggleStudentStatus,
+  deleteAdminStudent,
   resetStudentPassword,
   AdminStudentItem,
   AdminBatchItem,
 } from '@/lib/api';
+import ConfirmationModal, { ConfirmVariant } from '@/components/ConfirmationModal';
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<AdminStudentItem[]>([]);
@@ -39,6 +41,15 @@ export default function AdminStudentsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Confirmation modal state
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant: ConfirmVariant;
+    onConfirm: () => void;
+  } | null>(null);
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
@@ -120,19 +131,43 @@ export default function AdminStudentsPage() {
     }
   };
 
-  const handleToggleStatus = async (student: AdminStudentItem) => {
+  const handleToggleStatus = (student: AdminStudentItem) => {
     const actionLabel = student.isActive ? 'Deactivate' : 'Reactivate';
-    if (!confirm(`Are you sure you want to ${actionLabel.toLowerCase()} account for "${student.fullName}"?`)) {
-      return;
-    }
+    setPendingConfirm({
+      title: `${actionLabel} Student Account`,
+      message: `Are you sure you want to ${actionLabel.toLowerCase()} the account for "${student.fullName}" (@${student.username})? ${student.isActive ? 'They will not be able to log in until reactivated.' : 'Their login access will be restored.'}`,
+      confirmLabel: actionLabel,
+      variant: 'warning',
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const success = await toggleStudentStatus(student.id, student.isActive);
+        if (success) {
+          setActionSuccess(`Student "${student.fullName}" ${student.isActive ? 'deactivated' : 'reactivated'}.`);
+          fetchStudents();
+        } else {
+          alert(`Failed to ${actionLabel.toLowerCase()} student.`);
+        }
+      },
+    });
+  };
 
-    const success = await toggleStudentStatus(student.id, student.isActive);
-    if (success) {
-      setActionSuccess(`Student "${student.fullName}" ${student.isActive ? 'deactivated' : 'reactivated'}.`);
-      fetchStudents();
-    } else {
-      alert(`Failed to ${actionLabel.toLowerCase()} student.`);
-    }
+  const handleDeleteStudent = (student: AdminStudentItem) => {
+    setPendingConfirm({
+      title: 'Permanently Delete Student',
+      message: `Are you sure? This permanently removes "${student.fullName}" (@${student.username}) and cannot be undone. All associated data will be lost.`,
+      confirmLabel: 'Delete Permanently',
+      variant: 'danger',
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const success = await deleteAdminStudent(student.id);
+        if (success) {
+          setActionSuccess(`Student "${student.fullName}" (@${student.username}) permanently deleted.`);
+          fetchStudents();
+        } else {
+          alert('Failed to delete student record.');
+        }
+      },
+    });
   };
 
   const handleResetPassword = async (student: AdminStudentItem) => {
@@ -307,11 +342,17 @@ export default function AdminStudentsPage() {
                         onClick={() => handleToggleStatus(student)}
                         className={`px-2.5 py-1 rounded text-[11px] font-semibold font-mono transition-colors ${
                           student.isActive
-                            ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+                            ? 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
                             : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                         }`}
                       >
                         {student.isActive ? 'Deactivate' : 'Reactivate'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteStudent(student)}
+                        className="px-2.5 py-1 rounded text-[11px] font-semibold font-mono bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors"
+                      >
+                        🗑️ Delete
                       </button>
                     </td>
                   </tr>
@@ -497,6 +538,17 @@ export default function AdminStudentsPage() {
           </div>
         </div>
       )}
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant={pendingConfirm?.variant}
+        onConfirm={() => pendingConfirm?.onConfirm()}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }
