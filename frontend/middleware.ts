@@ -1,26 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  const { pathname } = request.nextUrl;
-
-  // Protect student dashboard routes (/dashboard, /student/*)
-  const isStudentRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/student');
-  // Protect admin dashboard routes (/admin/*)
-  const isAdminRoute = pathname.startsWith('/admin');
-
-  if (isStudentRoute || isAdminRoute) {
-    if (!token) {
-      const signInUrl = new URL('/signin', request.url);
-      signInUrl.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(signInUrl);
-    }
-  }
-
+/**
+ * Middleware is intentionally a pass-through.
+ *
+ * Why: In the cross-origin production setup (Vercel frontend + Render backend),
+ * the httpOnly auth cookie is set on the Render domain. Vercel's edge middleware
+ * never receives it, so any cookie-based check here always fails and redirects
+ * authenticated users back to /signin.
+ *
+ * Auth protection is handled client-side by the AuthContext guards in
+ * app/admin/layout.tsx and app/dashboard/layout.tsx, which validate the session
+ * via API calls to the backend with credentials:'include'.
+ */
+export function middleware(_request: NextRequest) {
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/student/:path*', '/admin/:path*'],
+  matcher: [],
 };
+
