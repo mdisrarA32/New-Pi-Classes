@@ -149,3 +149,36 @@ export const updateEnquiryStatus = async (req: Request, res: Response): Promise<
     });
   }
 };
+
+/**
+ * DELETE /api/admin/enquiries/:id
+ * Auth: Admin only
+ * Permanently deletes an enquiry document.
+ */
+export const deleteEnquiry = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const enquiry = await Enquiry.findByIdAndDelete(id);
+
+    if (!enquiry) {
+      res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Enquiry record not found' },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: enquiry._id.toString(),
+        name: enquiry.name,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: (error as Error).message },
+    });
+  }
+};

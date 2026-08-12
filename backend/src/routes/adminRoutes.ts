@@ -22,7 +22,7 @@ import { createChapter, deleteChapter } from '../controllers/subjectChapterContr
 import { createMaterial, deleteMaterial } from '../controllers/materialController';
 import { createPYQ, deletePYQ } from '../controllers/pyqController';
 import { createNotice, deleteNotice } from '../controllers/noticeController';
-import { getEnquiries, updateEnquiryStatus } from '../controllers/enquiryController';
+import { getEnquiries, updateEnquiryStatus, deleteEnquiry } from '../controllers/enquiryController';
 import {
   createTestimonial,
   getAdminTestimonials,
@@ -84,6 +84,7 @@ router.delete('/notices/:id', deleteNotice);
 // Enquiry CRM Management
 router.get('/enquiries', getEnquiries);
 router.patch('/enquiries/:id', updateEnquiryStatus);
+router.delete('/enquiries/:id', deleteEnquiry);
 
 // Testimonials Management
 router.post('/testimonials', createTestimonial);
