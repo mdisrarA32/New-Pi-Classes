@@ -240,7 +240,7 @@ export const updateBatch = async (req: Request, res: Response): Promise<void> =>
 export const deleteBatch = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const batch = await Batch.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    const batch = await Batch.findByIdAndDelete(id);
 
     if (!batch) {
       res.status(404).json({
@@ -255,8 +255,6 @@ export const deleteBatch = async (req: Request, res: Response): Promise<void> =>
       data: {
         id: batch._id.toString(),
         name: batch.name,
-        isActive: false,
-        archived: true,
       },
     });
   } catch (error) {
