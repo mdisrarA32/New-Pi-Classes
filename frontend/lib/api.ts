@@ -1127,6 +1127,17 @@ export async function updateAdminEnquiryStatus(
   return false;
 }
 
+export async function deleteAdminEnquiry(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/enquiries/${id}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin enquiry failed:', e);
+  }
+  return false;
+}
+
 /* --- Marketing: Testimonials & Courses --- */
 export async function getAdminTestimonialsList(): Promise<AdminTestimonialItem[]> {
   try {

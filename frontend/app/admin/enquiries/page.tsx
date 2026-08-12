@@ -4,13 +4,21 @@ import { useState, useEffect } from 'react';
 import {
   getAdminEnquiriesList,
   updateAdminEnquiryStatus,
+  deleteAdminEnquiry,
   AdminEnquiryItem,
 } from '@/lib/api';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function AdminEnquiriesPage() {
   const [enquiries, setEnquiries] = useState<AdminEnquiryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const fetchEnquiries = async () => {
     setLoading(true);
@@ -36,6 +44,24 @@ export default function AdminEnquiriesPage() {
     } else {
       alert('Failed to update enquiry status.');
     }
+  };
+
+  const handleDeleteEnquiry = (enquiry: AdminEnquiryItem) => {
+    setPendingConfirm({
+      title: 'Delete Enquiry',
+      message: `Are you sure you want to delete the enquiry from "${enquiry.name}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Enquiry',
+      onConfirm: async () => {
+        setPendingConfirm(null);
+        const ok = await deleteAdminEnquiry(enquiry.id);
+        if (ok) {
+          setActionSuccess(`Enquiry from "${enquiry.name}" deleted.`);
+          fetchEnquiries();
+        } else {
+          alert('Failed to delete enquiry.');
+        }
+      },
+    });
   };
 
   return (
@@ -96,6 +122,7 @@ export default function AdminEnquiriesPage() {
                   <th className="py-3 px-4">Message</th>
                   <th className="py-3 px-4">Submitted Date</th>
                   <th className="py-3 px-4">Pipeline Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#0F1B3D]/10 font-sans">
@@ -136,6 +163,14 @@ export default function AdminEnquiriesPage() {
                         <option value="closed">🔒 Closed</option>
                       </select>
                     </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => handleDeleteEnquiry(enq)}
+                        className="px-2.5 py-1 rounded text-[11px] font-semibold font-mono bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -143,6 +178,16 @@ export default function AdminEnquiriesPage() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant="danger"
+        onConfirm={() => pendingConfirm?.onConfirm()}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }
