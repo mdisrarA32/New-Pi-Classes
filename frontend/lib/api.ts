@@ -650,6 +650,20 @@ export async function toggleBatchStatus(batchId: string, currentlyActive: boolea
 }
 
 /**
+ * Permanently delete a batch record
+ */
+export async function deleteAdminBatch(batchId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/batches/${batchId}`, { method: 'DELETE', credentials: 'include' });
+    const json = await res.json();
+    if (json.success) return true;
+  } catch (e) {
+    console.error('[API Error] Delete admin batch failed:', e);
+  }
+  return false;
+}
+
+/**
  * Fetch student directory for admin
  */
 export async function getAdminStudents(params?: {

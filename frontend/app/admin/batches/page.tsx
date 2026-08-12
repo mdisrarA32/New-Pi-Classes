@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAdminBatches, createAdminBatch, toggleBatchStatus, AdminBatchItem } from '@/lib/api';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import { getAdminBatches, createAdminBatch, deleteAdminBatch, AdminBatchItem } from '@/lib/api';
+import ConfirmationModal, { ConfirmVariant } from '@/components/ConfirmationModal';
 
 export default function AdminBatchesPage() {
   const [batches, setBatches] = useState<AdminBatchItem[]>([]);
@@ -22,6 +22,7 @@ export default function AdminBatchesPage() {
     title: string;
     message: string;
     confirmLabel: string;
+    variant?: ConfirmVariant;
     onConfirm: () => void;
   } | null>(null);
 
@@ -75,20 +76,20 @@ export default function AdminBatchesPage() {
     }
   };
 
-  const handleToggleStatus = (batch: AdminBatchItem) => {
-    const actionLabel = batch.isActive ? 'Archive' : 'Reactivate';
+  const handleDeleteBatch = (batch: AdminBatchItem) => {
     setPendingConfirm({
-      title: `${actionLabel} Batch`,
-      message: `Are you sure you want to ${actionLabel.toLowerCase()} the batch "${batch.name}"? ${batch.isActive ? 'Students in this batch will retain their accounts but no new assignments can target this batch.' : 'This batch will become available for student assignments again.'}`,
-      confirmLabel: actionLabel,
+      title: `Delete Batch`,
+      message: `Are you sure you want to delete the batch "${batch.name}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Batch',
+      variant: 'danger',
       onConfirm: async () => {
         setPendingConfirm(null);
-        const success = await toggleBatchStatus(batch.id, batch.isActive);
+        const success = await deleteAdminBatch(batch.id);
         if (success) {
-          setActionSuccess(`Batch "${batch.name}" ${batch.isActive ? 'archived' : 'reactivated'} successfully!`);
+          setActionSuccess(`Batch "${batch.name}" deleted successfully!`);
           fetchBatches();
         } else {
-          alert(`Failed to ${actionLabel.toLowerCase()} batch.`);
+          alert(`Failed to delete batch.`);
         }
       },
     });
@@ -138,7 +139,7 @@ export default function AdminBatchesPage() {
             All Institute Batches ({batches.length})
           </h2>
           <span className="text-xs font-mono text-[#0F1B3D]/60">
-            {batches.filter((b) => b.isActive).length} Active • {batches.filter((b) => !b.isActive).length} Archived
+            {batches.length} Active Batches
           </span>
         </div>
 
@@ -197,27 +198,17 @@ export default function AdminBatchesPage() {
                       👤 {batch.studentCount} students
                     </td>
                     <td className="py-3.5 px-4 font-mono">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                          batch.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-slate-100 text-slate-600 border border-slate-300'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${batch.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                        {batch.isActive ? 'Active' : 'Archived'}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Active
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
-                        onClick={() => handleToggleStatus(batch)}
-                        className={`px-3 py-1 rounded text-[11px] font-semibold font-mono transition-colors ${
-                          batch.isActive
-                            ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                        }`}
+                        onClick={() => handleDeleteBatch(batch)}
+                        className="px-3 py-1 rounded text-[11px] font-semibold font-mono transition-colors bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
                       >
-                        {batch.isActive ? 'Archive' : 'Reactivate'}
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -332,7 +323,7 @@ export default function AdminBatchesPage() {
         title={pendingConfirm?.title || ''}
         message={pendingConfirm?.message || ''}
         confirmLabel={pendingConfirm?.confirmLabel}
-        variant="warning"
+        variant={pendingConfirm?.variant || 'danger'}
         onConfirm={() => pendingConfirm?.onConfirm()}
         onCancel={() => setPendingConfirm(null)}
       />
