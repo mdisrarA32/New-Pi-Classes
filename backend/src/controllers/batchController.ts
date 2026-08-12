@@ -240,6 +240,19 @@ export const updateBatch = async (req: Request, res: Response): Promise<void> =>
 export const deleteBatch = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+
+    const enrolledCount = await User.countDocuments({ batchId: id, role: 'student' });
+    if (enrolledCount > 0) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'BATCH_HAS_STUDENTS',
+          message: `Cannot delete batch with ${enrolledCount} enrolled student${enrolledCount > 1 ? 's' : ''}. Reassign students first.`,
+        },
+      });
+      return;
+    }
+
     const batch = await Batch.findByIdAndDelete(id);
 
     if (!batch) {

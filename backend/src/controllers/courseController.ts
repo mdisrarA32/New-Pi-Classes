@@ -180,7 +180,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
 export const deleteCourse = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const course = await Course.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    const course = await Course.findByIdAndDelete(id);
 
     if (!course) {
       res.status(404).json({
@@ -192,7 +192,7 @@ export const deleteCourse = async (req: Request, res: Response): Promise<void> =
 
     res.status(200).json({
       success: true,
-      data: { id: course._id.toString(), name: course.name, isActive: false },
+      data: { id: course._id.toString(), name: course.name },
     });
   } catch (error) {
     res.status(500).json({
