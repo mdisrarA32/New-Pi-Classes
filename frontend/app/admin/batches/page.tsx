@@ -84,12 +84,12 @@ export default function AdminBatchesPage() {
       variant: 'danger',
       onConfirm: async () => {
         setPendingConfirm(null);
-        const success = await deleteAdminBatch(batch.id);
-        if (success) {
+        const res = await deleteAdminBatch(batch.id);
+        if (res.success) {
           setActionSuccess(`Batch "${batch.name}" deleted successfully!`);
           fetchBatches();
         } else {
-          alert(`Failed to delete batch.`);
+          alert(res.error || `Failed to delete batch.`);
         }
       },
     });

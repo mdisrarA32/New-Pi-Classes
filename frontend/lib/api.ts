@@ -652,15 +652,16 @@ export async function toggleBatchStatus(batchId: string, currentlyActive: boolea
 /**
  * Permanently delete a batch record
  */
-export async function deleteAdminBatch(batchId: string): Promise<boolean> {
+export async function deleteAdminBatch(batchId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(`${API_BASE_URL}/admin/batches/${batchId}`, { method: 'DELETE', credentials: 'include' });
     const json = await res.json();
-    if (json.success) return true;
+    if (json.success) return { success: true };
+    return { success: false, error: json.error?.message || 'Failed to delete batch' };
   } catch (e) {
     console.error('[API Error] Delete admin batch failed:', e);
+    return { success: false, error: 'Network error deleting batch.' };
   }
-  return false;
 }
 
 /**
